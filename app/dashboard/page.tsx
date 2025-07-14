@@ -72,12 +72,14 @@ export default function Dashboard() {
       setIsLoading(true)
       setError("")
 
-      // Usar o endpoint específico do usuário
+      // Usar o método getMy() que utiliza Query Param tutorId via Kong
+      console.log("[Dashboard] Carregando pets do usuário...")
       const petsData = await animalsAPI.getMy()
+      console.log("[Dashboard] Pets carregados:", petsData)
       setPets(petsData)
     } catch (error) {
       console.error("Erro ao carregar pets:", error)
-      setError("Erro ao carregar seus pets. Tente novamente.")
+      setError("Erro ao carregar seus pets. Verifique a conexão com o servidor.")
     } finally {
       setIsLoading(false)
     }
@@ -90,7 +92,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header - REMOVIDO o texto "Kong Gateway" */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">

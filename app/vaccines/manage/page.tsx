@@ -39,7 +39,11 @@ export default function VaccineManagePage() {
     try {
       setIsLoadingAnimals(true)
       setError("")
-      const animalsData = await animalsAPI.getAll()
+      console.log("[VaccineManage] Carregando animais...")
+
+      // Usar getMy() para carregar apenas os animais do usuário logado
+      const animalsData = await animalsAPI.getMy()
+      console.log("[VaccineManage] Animais carregados:", animalsData)
       setAnimals(animalsData)
     } catch (error) {
       console.error("Erro ao carregar animais:", error)
@@ -53,7 +57,10 @@ export default function VaccineManagePage() {
     try {
       setIsLoadingVaccinations(true)
       setError("")
+      console.log(`[VaccineManage] Carregando vacinas do animal ${animalId}...`)
+
       const vaccinationsData = await vaccinesAPI.getByAnimalId(animalId)
+      console.log("[VaccineManage] Vacinas carregadas:", vaccinationsData)
       setVaccinations(vaccinationsData)
     } catch (error) {
       console.error("Erro ao carregar vacinas:", error)
@@ -71,18 +78,21 @@ export default function VaccineManagePage() {
   }
 
   const handleDeleteVaccine = async (vaccineId: number) => {
-    if (!confirm("Tem certeza que deseja excluir esta vacina? Esta ação não pode ser desfeita.")) {
+    if (!selectedAnimalId || !confirm("Tem certeza que deseja excluir esta vacina? Esta ação não pode ser desfeita.")) {
       return
     }
 
     try {
       setIsDeletingVaccine(vaccineId)
-      await vaccinesAPI.delete(vaccineId)
+      console.log(`[VaccineManage] Deletando vacina ${vaccineId} do animal ${selectedAnimalId}...`)
+
+      // Usar o novo método que requer animalId e vaccineId
+      await vaccinesAPI.delete(selectedAnimalId, vaccineId)
+
+      console.log("[VaccineManage] Vacina deletada com sucesso")
 
       // Recarregar a lista de vacinas
-      if (selectedAnimalId) {
-        await loadVaccinations(selectedAnimalId)
-      }
+      await loadVaccinations(selectedAnimalId)
     } catch (error) {
       console.error("Erro ao deletar vacina:", error)
       setError("Erro ao deletar a vacina. Tente novamente.")
@@ -116,7 +126,7 @@ export default function VaccineManagePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header - REMOVIDO o texto "Kong Gateway" */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-16">

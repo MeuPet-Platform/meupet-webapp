@@ -1,5 +1,5 @@
-// Configuração base da API
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081"
+// Configuração base da API - Agora aponta para o Kong Gateway
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 // Tipos para as requisições baseados nos DTOs do backend
 export interface LoginRequest {
@@ -108,7 +108,7 @@ const getAuthToken = (): string | null => {
   return null
 }
 
-// Utilitário para fazer requisições autenticadas
+// Utilitário para fazer requisições autenticadas via Kong Gateway
 const apiRequest = async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
   const token = getAuthToken()
   const url = `${API_BASE_URL}${endpoint}`
@@ -122,17 +122,20 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}): Promise<
     },
   }
 
+  console.log(`[API Request] ${options.method || "GET"} ${url}`) // Debug para Kong
+
   const response = await fetch(url, config)
 
   if (!response.ok) {
     const errorText = await response.text()
+    console.error(`[API Error] ${response.status} - ${errorText}`) // Debug para Kong
     throw new Error(errorText || `HTTP ${response.status}`)
   }
 
   return response
 }
 
-// API de Autenticação
+// API de Autenticação - Roteada via Kong para users-api
 export const authAPI = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
     const response = await fetch(`${API_BASE_URL}/usuarios/login`, {
@@ -208,7 +211,7 @@ export const authAPI = {
   },
 }
 
-// API de Usuários
+// API de Usuários - Roteada via Kong para users-api
 export const usersAPI = {
   getById: async (id: number): Promise<UsuarioResponse> => {
     const response = await apiRequest(`/usuarios/${id}`)
@@ -216,21 +219,23 @@ export const usersAPI = {
   },
 }
 
-// API de Animais
+// API de Animais - Roteada via Kong para animals-api
 export const animalsAPI = {
-  // Listar todos os animais
+  // Listar todos os animais (sem filtro)
   getAll: async (): Promise<AnimalResponse[]> => {
     const response = await apiRequest("/animais")
     return response.json()
   },
 
-  // Listar apenas os animais do usuário logado (quando implementado no backend)
+  // Listar apenas os animais do usuário logado usando Query Param
   getMy: async (): Promise<AnimalResponse[]> => {
     const userId = authAPI.getUserId()
     if (!userId) {
       throw new Error("Usuário não autenticado")
     }
-    const response = await apiRequest(`/usuarios/${userId}/animais`)
+
+    // Usar o novo endpoint com Query Param tutorId
+    const response = await apiRequest(`/animais?tutorId=${userId}`)
     return response.json()
   },
 
@@ -302,7 +307,7 @@ export const animalsAPI = {
   },
 }
 
-// API de Vacinas
+// API de Vacinas - Roteada via Kong para animals-api (consolidada)
 export const vaccinesAPI = {
   // Listar vacinas de um animal
   getByAnimalId: async (animalId: number): Promise<VacinaResponse[]> => {
@@ -319,18 +324,18 @@ export const vaccinesAPI = {
     return response.json()
   },
 
-  // Atualizar vacina individual
-  update: async (vaccineId: number, data: VacinaRequest): Promise<VacinaResponse> => {
-    const response = await apiRequest(`/vacinas/${vaccineId}`, {
+  // Atualizar vacina - AGORA REQUER animalId E vaccineId
+  update: async (animalId: number, vaccineId: number, data: VacinaRequest): Promise<VacinaResponse> => {
+    const response = await apiRequest(`/animais/${animalId}/vacinas/${vaccineId}`, {
       method: "PUT",
       body: JSON.stringify(data),
     })
     return response.json()
   },
 
-  // Deletar vacina individual
-  delete: async (vaccineId: number): Promise<void> => {
-    await apiRequest(`/vacinas/${vaccineId}`, {
+  // Deletar vacina - AGORA REQUER animalId E vaccineId
+  delete: async (animalId: number, vaccineId: number): Promise<void> => {
+    await apiRequest(`/animais/${animalId}/vacinas/${vaccineId}`, {
       method: "DELETE",
     })
   },

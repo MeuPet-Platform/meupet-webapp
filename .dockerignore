@@ -1,0 +1,14 @@
+# Evita arquivos com symlinks, cache, node_modules etc.
+node_modules
+.next
+.vscode
+.idea
+docs
+.git
+.gitignore
+Dockerfile
+README.md
+*.log
+*.DS_Store
+.env
+pnpm-lock.yaml

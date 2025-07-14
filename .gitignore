@@ -28,3 +28,8 @@ next-env.d.ts
 
 #macos
 .DS_Store
+
+.idea/
+
+package-lock.json
+yarn.lock

@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: .
+    container_name: meupet_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://kong:8000
+    networks:
+      - meupet-network
+
+networks:
+  meupet-network:
+    external: true
