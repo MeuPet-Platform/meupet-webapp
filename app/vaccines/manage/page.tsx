@@ -15,6 +15,63 @@ import { VaccinationModal } from "@/components/vaccination-modal"
 import { formatDateToBR } from "@/lib/date-utils"
 import { getAnimalTypeLabel } from "@/lib/animal-utils"
 
+// NOVA FUNÇÃO: Lógica detalhada de status de revacinação - COPIADA de app/pet/[id]/page.tsx
+const getVaccinationDetailedStatus = (
+  currentVaccination: VacinaResponse,
+  allVaccinations: VacinaResponse[],
+): { label: string; variant: "default" | "destructive" | "secondary" | "outline" } => {
+  // Se não há data de revacinação definida, considerar como "Vacinado" (dose única ou não requer revacinação)
+  if (!currentVaccination.revacina) {
+    return { label: "Vacinado", variant: "default" }
+  }
+
+  const today = new Date()
+  const revacinaDate = new Date(currentVaccination.revacina)
+  const currentVaccinaDate = new Date(currentVaccination.dataVacina)
+
+  // VERIFICAR SE A REVACINAÇÃO FOI COBERTA POR OUTRA VACINA DO MESMO TIPO
+  const wasCoveredByLaterVaccination = allVaccinations.some((otherVaccination) => {
+    // Não comparar com a mesma vacina
+    if (otherVaccination.id === currentVaccination.id) {
+      return false
+    }
+
+    // CORREÇÃO: Descartar se NÃO for do mesmo tipo (antes estava descartando se fosse do mesmo tipo)
+    if (otherVaccination.tipoVacina !== currentVaccination.tipoVacina) {
+      return false
+    }
+
+    const otherVaccinaDate = new Date(otherVaccination.dataVacina)
+
+    // A outra vacina deve ter sido aplicada DEPOIS da vacina atual
+    // E ANTES OU NO DIA da data de revacinação prevista
+    return (
+      otherVaccinaDate > currentVaccinaDate && // Aplicada depois da vacina atual
+      otherVaccinaDate <= revacinaDate // Aplicada antes ou no dia da revacinação prevista
+    )
+  })
+
+  // Se foi coberta por outra vacina, considerar como "Vacinado"
+  if (wasCoveredByLaterVaccination) {
+    return { label: "Vacinado", variant: "default" }
+  }
+
+  // APLICAR LÓGICA TRADICIONAL DE STATUS BASEADA NA DATA DE REVACINAÇÃO
+  const isOverdue = revacinaDate < today
+  const isUpcoming = revacinaDate <= new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000) // Próximos 30 dias
+
+  if (isOverdue) {
+    return { label: "Atrasada", variant: "destructive" }
+  }
+
+  if (isUpcoming) {
+    return { label: "Próxima", variant: "secondary" }
+  }
+
+  // Revacinação está no futuro (mais de 30 dias)
+  return { label: "Em dia", variant: "default" }
+}
+
 export default function VaccineManagePage() {
   const router = useRouter()
   const [animals, setAnimals] = useState<AnimalResponse[]>([])
@@ -109,19 +166,6 @@ export default function VaccineManagePage() {
 
   const getSelectedAnimal = () => {
     return animals.find((animal) => animal.id === selectedAnimalId)
-  }
-
-  const getVaccinationStatus = (vaccination: VacinaResponse) => {
-    if (!vaccination.revacina) return { label: "Sem revacinação", variant: "outline" as const }
-
-    const nextDoseDate = new Date(vaccination.revacina)
-    const today = new Date()
-    const isOverdue = nextDoseDate < today
-    const isUpcoming = nextDoseDate <= new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
-
-    if (isOverdue) return { label: "Atrasada", variant: "destructive" as const }
-    if (isUpcoming) return { label: "Próxima", variant: "secondary" as const }
-    return { label: "Em dia", variant: "default" as const }
   }
 
   return (
@@ -229,7 +273,9 @@ export default function VaccineManagePage() {
                   </TableHeader>
                   <TableBody>
                     {vaccinations.map((vaccination) => {
-                      const status = getVaccinationStatus(vaccination)
+                      // APLICAR A NOVA LÓGICA DE STATUS DETALHADO
+                      const status = getVaccinationDetailedStatus(vaccination, vaccinations)
+
                       return (
                         <TableRow key={vaccination.id}>
                           <TableCell className="font-medium">{vaccination.tipoVacina}</TableCell>
@@ -247,7 +293,7 @@ export default function VaccineManagePage() {
                                     ? "bg-yellow-500 hover:bg-yellow-600"
                                     : status.variant === "default"
                                       ? "bg-green-500 hover:bg-green-600"
-                                      : ""
+                                      : "bg-gray-500 hover:bg-gray-600"
                               }
                             >
                               {status.label}

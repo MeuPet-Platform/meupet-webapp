@@ -83,13 +83,28 @@ export function VaccinationModal({ isOpen, onClose, petId, petName, onVaccinatio
         throw new Error("Data da aplicação inválida. Use o formato DD/MM/YYYY")
       }
 
+      // NOVA VALIDAÇÃO: Verificar se a data da aplicação não é futura
+      const dataVacinaISO = formatBRDateToISO(formData.dataVacina)
+      if (!dataVacinaISO) {
+        throw new Error("Erro ao processar a data da aplicação")
+      }
+
+      const dataVacinaDate = new Date(dataVacinaISO)
+      const today = new Date()
+      // Zerar as horas para comparar apenas a data (dia/mês/ano)
+      today.setHours(0, 0, 0, 0)
+      dataVacinaDate.setHours(0, 0, 0, 0)
+
+      if (dataVacinaDate > today) {
+        throw new Error("A data da aplicação não pode ser futura. Selecione uma data de hoje ou anterior.")
+      }
+
       // Validar formato da data de revacinação (se informada)
       if (formData.revacina && !isValidBRDate(formData.revacina)) {
         throw new Error("Data da revacinação inválida. Use o formato DD/MM/YYYY")
       }
 
       // Converter datas brasileiras para formato ISO antes de enviar ao backend
-      const dataVacinaISO = formatBRDateToISO(formData.dataVacina)
       const revacinaISO = formData.revacina ? formatBRDateToISO(formData.revacina) : undefined
 
       if (!dataVacinaISO) {

@@ -68,6 +68,63 @@ const getVaccinationStatusVariant = (status: string) => {
   }
 }
 
+// NOVA FUNÇÃO: Lógica detalhada de status de revacinação - CORRIGIDA
+const getVaccinationDetailedStatus = (
+  currentVaccination: VacinaResponse,
+  allVaccinations: VacinaResponse[],
+): { label: string; variant: "default" | "destructive" | "secondary" | "outline" } => {
+  // Se não há data de revacinação definida, considerar como "Vacinado" (dose única ou não requer revacinação)
+  if (!currentVaccination.revacina) {
+    return { label: "Vacinado", variant: "default" }
+  }
+
+  const today = new Date()
+  const revacinaDate = new Date(currentVaccination.revacina)
+  const currentVaccinaDate = new Date(currentVaccination.dataVacina)
+
+  // VERIFICAR SE A REVACINAÇÃO FOI COBERTA POR OUTRA VACINA DO MESMO TIPO
+  const wasCoveredByLaterVaccination = allVaccinations.some((otherVaccination) => {
+    // Não comparar com a mesma vacina
+    if (otherVaccination.id === currentVaccination.id) {
+      return false
+    }
+
+    // CORREÇÃO: Descartar se NÃO for do mesmo tipo (antes estava descartando se fosse do mesmo tipo)
+    if (otherVaccination.tipoVacina !== currentVaccination.tipoVacina) {
+      return false
+    }
+
+    const otherVaccinaDate = new Date(otherVaccination.dataVacina)
+
+    // A outra vacina deve ter sido aplicada DEPOIS da vacina atual
+    // E ANTES OU NO DIA da data de revacinação prevista
+    return (
+      otherVaccinaDate > currentVaccinaDate && // Aplicada depois da vacina atual
+      otherVaccinaDate <= revacinaDate // Aplicada antes ou no dia da revacinação prevista
+    )
+  })
+
+  // Se foi coberta por outra vacina, considerar como "Vacinado"
+  if (wasCoveredByLaterVaccination) {
+    return { label: "Vacinado", variant: "default" }
+  }
+
+  // APLICAR LÓGICA TRADICIONAL DE STATUS BASEADA NA DATA DE REVACINAÇÃO
+  const isOverdue = revacinaDate < today
+  const isUpcoming = revacinaDate <= new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000) // Próximos 30 dias
+
+  if (isOverdue) {
+    return { label: "Atrasada", variant: "destructive" }
+  }
+
+  if (isUpcoming) {
+    return { label: "Próxima", variant: "secondary" }
+  }
+
+  // Revacinação está no futuro (mais de 30 dias)
+  return { label: "Em dia", variant: "default" }
+}
+
 export default function PetDetails() {
   const params = useParams()
   const router = useRouter()
@@ -391,11 +448,8 @@ export default function PetDetails() {
                     </TableHeader>
                     <TableBody>
                       {vaccinations.map((vaccination) => {
-                        const nextDoseDate = vaccination.revacina ? new Date(vaccination.revacina) : null
-                        const today = new Date()
-                        const isOverdue = nextDoseDate && nextDoseDate < today
-                        const isUpcoming =
-                          nextDoseDate && nextDoseDate <= new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
+                        // USAR A NOVA FUNÇÃO DE STATUS DETALHADO
+                        const status = getVaccinationDetailedStatus(vaccination, vaccinations)
 
                         return (
                           <TableRow key={vaccination.id}>
@@ -406,16 +460,18 @@ export default function PetDetails() {
                             </TableCell>
                             <TableCell>
                               <Badge
-                                variant={isOverdue ? "destructive" : isUpcoming ? "secondary" : "default"}
+                                variant={status.variant}
                                 className={
-                                  isOverdue
+                                  status.variant === "destructive"
                                     ? "bg-red-500 hover:bg-red-600"
-                                    : isUpcoming
+                                    : status.variant === "secondary"
                                       ? "bg-yellow-500 hover:bg-yellow-600"
-                                      : "bg-green-500 hover:bg-green-600"
+                                      : status.variant === "default"
+                                        ? "bg-green-500 hover:bg-green-600"
+                                        : "bg-gray-500 hover:bg-gray-600"
                                 }
                               >
-                                {isOverdue ? "Atrasada" : isUpcoming ? "Próxima" : "Em dia"}
+                                {status.label}
                               </Badge>
                             </TableCell>
                           </TableRow>
