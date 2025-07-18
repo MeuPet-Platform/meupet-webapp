@@ -1,5 +1,5 @@
 // Configuração base da API - Agora aponta para o Kong Gateway
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+const API_BASE_URL =  "https://meupet-kong-gateway-prod.herokuapp.com"
 
 // Tipos para as requisições baseados nos DTOs do backend
 export interface LoginRequest {
